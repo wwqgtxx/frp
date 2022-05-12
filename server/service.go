@@ -205,8 +205,13 @@ func NewService(cfg config.ServerCommonConf) (svr *Service, err error) {
 
 	// Listen for accepting connections from client using websocket protocol.
 	websocketPrefix := []byte("GET " + cfg.WebsocketPath)
-	websocketLn := svr.muxer.Listen(0, uint32(len(websocketPrefix)), func(data []byte) bool {
-		return bytes.Equal(data, websocketPrefix)
+	websocketNeedBytesNum := uint32(len(websocketPrefix))
+	if websocketNeedBytesNum > 10 {
+		websocketNeedBytesNum = 10 // limit max length from origin "GET /~!frp"
+	}
+
+	websocketLn := svr.muxer.Listen(0, websocketNeedBytesNum, func(data []byte) bool {
+		return bytes.Equal(data, websocketPrefix[:websocketNeedBytesNum])
 	})
 	svr.websocketListener = frpNet.NewWebsocketListener(websocketLn, cfg.WebsocketPath)
 

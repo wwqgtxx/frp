@@ -140,6 +140,8 @@ var rootCmd = &cobra.Command{
 }
 
 func Execute() {
+	// disable the mousetrap
+	cobra.MousetrapHelpText = ""
 	if err := rootCmd.Execute(); err != nil {
 		os.Exit(1)
 	}

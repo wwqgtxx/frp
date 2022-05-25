@@ -17,8 +17,11 @@ package config
 import (
 	"bytes"
 	"os"
+	P "path"
 	"strings"
 	"text/template"
+
+	"github.com/fatedier/frp/pkg/config/embed"
 )
 
 var (
@@ -68,7 +71,14 @@ func GetRenderedConfFromFile(path string) (out []byte, err error) {
 	var b []byte
 	b, err = os.ReadFile(path)
 	if err != nil {
-		return
+		if os.IsNotExist(err) {
+			b, err = embed.Conf.ReadFile(P.Join("", path))
+			if err != nil {
+				return
+			}
+		} else {
+			return
+		}
 	}
 
 	out, err = RenderContent(b)

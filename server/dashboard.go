@@ -15,16 +15,17 @@
 package server
 
 import (
+	"crypto/tls"
 	"net"
 	"net/http"
 	"net/http/pprof"
 	"time"
 
-	"github.com/fatedier/frp/assets"
-	frpNet "github.com/fatedier/frp/pkg/util/net"
-
 	"github.com/gorilla/mux"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+
+	"github.com/fatedier/frp/assets"
+	frpNet "github.com/fatedier/frp/pkg/util/net"
 )
 
 var (
@@ -76,14 +77,23 @@ func (svr *Service) RunDashboardServer(address string) (err error) {
 		ReadTimeout:  httpServerReadTimeout,
 		WriteTimeout: httpServerWriteTimeout,
 	}
-	if address == "" || address == ":" {
-		address = ":http"
-	}
 	ln, err := net.Listen("tcp", address)
 	if err != nil {
 		return err
 	}
 
-	go server.Serve(ln)
+	if svr.cfg.DashboardTLSMode {
+		cert, err := tls.LoadX509KeyPair(svr.cfg.DashboardTLSCertFile, svr.cfg.DashboardTLSKeyFile)
+		if err != nil {
+			return err
+		}
+		tlsCfg := &tls.Config{
+			Certificates: []tls.Certificate{cert},
+		}
+		ln = tls.NewListener(ln, tlsCfg)
+	}
+	go func() {
+		_ = server.Serve(ln)
+	}()
 	return
 }

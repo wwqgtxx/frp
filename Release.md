@@ -1,7 +1,9 @@
 ### New
 
-* Added new parameter `config_dir` in frpc to run multiple client instances in one process.
+* Add `oidc_scope` parameter to frpc when `authentication_method = oidc`.
+* Support quic protocol between frpc and frps.
 
-### Fix
 
-* Equal sign in environment variables causes parsing error.
+### Improve
+
+* Upgrade oidc and oauth2 package which is forward compatible.

@@ -12,18 +12,21 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/fatedier/frp/test/e2e/pkg/rpc"
 	libdial "github.com/fatedier/golib/net/dial"
+
+	"github.com/fatedier/frp/test/e2e/pkg/rpc"
+	"github.com/fatedier/frp/test/e2e/pkg/utils"
 )
 
 type Request struct {
 	protocol string
 
 	// for all protocol
-	addr    string
-	port    int
-	body    []byte
-	timeout time.Duration
+	addr     string
+	port     int
+	body     []byte
+	timeout  time.Duration
+	resolver *net.Resolver
 
 	// for http or https
 	method    string
@@ -31,6 +34,8 @@ type Request struct {
 	path      string
 	headers   map[string]string
 	tlsConfig *tls.Config
+
+	authValue string
 
 	proxyURL string
 }
@@ -40,8 +45,9 @@ func New() *Request {
 		protocol: "tcp",
 		addr:     "127.0.0.1",
 
-		method: "GET",
-		path:   "/",
+		method:  "GET",
+		path:    "/",
+		headers: map[string]string{},
 	}
 }
 
@@ -108,6 +114,11 @@ func (r *Request) HTTPHeaders(headers map[string]string) *Request {
 	return r
 }
 
+func (r *Request) HTTPAuth(user, password string) *Request {
+	r.authValue = utils.BasicAuth(user, password)
+	return r
+}
+
 func (r *Request) TLSConfig(tlsConfig *tls.Config) *Request {
 	r.tlsConfig = tlsConfig
 	return r
@@ -120,6 +131,11 @@ func (r *Request) Timeout(timeout time.Duration) *Request {
 
 func (r *Request) Body(content []byte) *Request {
 	r.body = content
+	return r
+}
+
+func (r *Request) Resolver(resolver *net.Resolver) *Request {
+	r.resolver = resolver
 	return r
 }
 
@@ -150,11 +166,12 @@ func (r *Request) Do() (*Response, error) {
 			return nil, err
 		}
 	} else {
+		dialer := &net.Dialer{Resolver: r.resolver}
 		switch r.protocol {
 		case "tcp":
-			conn, err = net.Dial("tcp", addr)
+			conn, err = dialer.Dial("tcp", addr)
 		case "udp":
-			conn, err = net.Dial("udp", addr)
+			conn, err = dialer.Dial("udp", addr)
 		default:
 			return nil, fmt.Errorf("invalid protocol")
 		}
@@ -165,7 +182,7 @@ func (r *Request) Do() (*Response, error) {
 
 	defer conn.Close()
 	if r.timeout > 0 {
-		conn.SetDeadline(time.Now().Add(r.timeout))
+		_ = conn.SetDeadline(time.Now().Add(r.timeout))
 	}
 	buf, err := r.sendRequestByConn(conn, r.body)
 	if err != nil {
@@ -183,7 +200,6 @@ type Response struct {
 func (r *Request) sendHTTPRequest(method, urlstr string, host string, headers map[string]string,
 	proxy string, body []byte, tlsConfig *tls.Config,
 ) (*Response, error) {
-
 	var inBody io.Reader
 	if len(body) != 0 {
 		inBody = bytes.NewReader(body)
@@ -198,11 +214,15 @@ func (r *Request) sendHTTPRequest(method, urlstr string, host string, headers ma
 	for k, v := range headers {
 		req.Header.Set(k, v)
 	}
+	if r.authValue != "" {
+		req.Header.Set("Authorization", r.authValue)
+	}
 	tr := &http.Transport{
 		DialContext: (&net.Dialer{
 			Timeout:   time.Second,
 			KeepAlive: 30 * time.Second,
 			DualStack: true,
+			Resolver:  r.resolver,
 		}).DialContext,
 		MaxIdleConns:          100,
 		IdleConnTimeout:       90 * time.Second,
@@ -220,6 +240,7 @@ func (r *Request) sendHTTPRequest(method, urlstr string, host string, headers ma
 	if err != nil {
 		return nil, err
 	}
+	defer resp.Body.Close()
 
 	ret := &Response{Code: resp.StatusCode, Header: resp.Header}
 	buf, err := io.ReadAll(resp.Body)

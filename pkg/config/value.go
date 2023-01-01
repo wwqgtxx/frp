@@ -24,9 +24,7 @@ import (
 	"github.com/fatedier/frp/pkg/config/embed"
 )
 
-var (
-	glbEnvs map[string]string
-)
+var glbEnvs map[string]string
 
 func init() {
 	glbEnvs = make(map[string]string)

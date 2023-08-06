@@ -1,9 +1,8 @@
-### New
+### Features
 
-* Add `oidc_scope` parameter to frpc when `authentication_method = oidc`.
-* Support quic protocol between frpc and frps.
+* Adds a `completion` command for shell completions.
 
+### Fixes
 
-### Improve
-
-* Upgrade oidc and oauth2 package which is forward compatible.
+* fix a goroutine leak issue caused by Login plugin timeout.
+* Fix an issue introduced in version 0.51.1, enabling `use_compression` will cause some requests to fail.

@@ -37,6 +37,8 @@ func init() {
 	sudpCmd.PersistentFlags().IntVarP(&bindPort, "bind_port", "", 0, "bind port")
 	sudpCmd.PersistentFlags().BoolVarP(&useEncryption, "ue", "", false, "use encryption")
 	sudpCmd.PersistentFlags().BoolVarP(&useCompression, "uc", "", false, "use compression")
+	sudpCmd.PersistentFlags().StringVarP(&bandwidthLimit, "bandwidth_limit", "", "", "bandwidth limit")
+	sudpCmd.PersistentFlags().StringVarP(&bandwidthLimitMode, "bandwidth_limit_mode", "", config.BandwidthLimitModeClient, "bandwidth limit mode")
 
 	rootCmd.AddCommand(sudpCmd)
 }
@@ -70,7 +72,13 @@ var sudpCmd = &cobra.Command{
 			cfg.Sk = sk
 			cfg.LocalIP = localIP
 			cfg.LocalPort = localPort
-			err = cfg.CheckForCli()
+			cfg.BandwidthLimit, err = config.NewBandwidthQuantity(bandwidthLimit)
+			if err != nil {
+				fmt.Println(err)
+				os.Exit(1)
+			}
+			cfg.BandwidthLimitMode = bandwidthLimitMode
+			err = cfg.ValidateForClient()
 			if err != nil {
 				fmt.Println(err)
 				os.Exit(1)
@@ -87,7 +95,7 @@ var sudpCmd = &cobra.Command{
 			cfg.ServerName = serverName
 			cfg.BindAddr = bindAddr
 			cfg.BindPort = bindPort
-			err = cfg.Check()
+			err = cfg.Validate()
 			if err != nil {
 				fmt.Println(err)
 				os.Exit(1)

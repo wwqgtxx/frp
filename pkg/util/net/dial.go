@@ -23,9 +23,15 @@ func DialHookCustomTLSHeadByte(enableTLS bool, disableCustomTLSHeadByte bool) li
 	}
 }
 
-func DialHookWebsocket(websocketPath string) libdial.AfterHookFunc {
+func DialHookWebsocket(protocol string, host string, websocketPath string) libdial.AfterHookFunc {
 	return func(ctx context.Context, c net.Conn, addr string) (context.Context, net.Conn, error) {
-		addr = "ws://" + addr + websocketPath
+		if protocol != "wss" {
+			protocol = "ws"
+		}
+		if host == "" {
+			host = addr
+		}
+		addr = protocol + "://" + host + websocketPath
 
 		dialer := &websocket.Dialer{
 			NetDial: func(network, addr string) (net.Conn, error) {

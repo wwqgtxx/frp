@@ -37,6 +37,8 @@ func init() {
 	xtcpCmd.PersistentFlags().IntVarP(&bindPort, "bind_port", "", 0, "bind port")
 	xtcpCmd.PersistentFlags().BoolVarP(&useEncryption, "ue", "", false, "use encryption")
 	xtcpCmd.PersistentFlags().BoolVarP(&useCompression, "uc", "", false, "use compression")
+	xtcpCmd.PersistentFlags().StringVarP(&bandwidthLimit, "bandwidth_limit", "", "", "bandwidth limit")
+	xtcpCmd.PersistentFlags().StringVarP(&bandwidthLimitMode, "bandwidth_limit_mode", "", config.BandwidthLimitModeClient, "bandwidth limit mode")
 
 	rootCmd.AddCommand(xtcpCmd)
 }
@@ -70,7 +72,13 @@ var xtcpCmd = &cobra.Command{
 			cfg.Sk = sk
 			cfg.LocalIP = localIP
 			cfg.LocalPort = localPort
-			err = cfg.CheckForCli()
+			cfg.BandwidthLimit, err = config.NewBandwidthQuantity(bandwidthLimit)
+			if err != nil {
+				fmt.Println(err)
+				os.Exit(1)
+			}
+			cfg.BandwidthLimitMode = bandwidthLimitMode
+			err = cfg.ValidateForClient()
 			if err != nil {
 				fmt.Println(err)
 				os.Exit(1)
@@ -87,7 +95,7 @@ var xtcpCmd = &cobra.Command{
 			cfg.ServerName = serverName
 			cfg.BindAddr = bindAddr
 			cfg.BindPort = bindPort
-			err = cfg.Check()
+			err = cfg.Validate()
 			if err != nil {
 				fmt.Println(err)
 				os.Exit(1)

@@ -22,7 +22,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	quic "github.com/lucas-clemente/quic-go"
+	quic "github.com/quic-go/quic-go"
 
 	"github.com/fatedier/frp/pkg/util/xlog"
 )
@@ -210,4 +210,9 @@ func (conn *wrapQuicStream) RemoteAddr() net.Addr {
 		return conn.c.RemoteAddr()
 	}
 	return (*net.TCPAddr)(nil)
+}
+
+func (conn *wrapQuicStream) Close() error {
+	conn.Stream.CancelRead(0)
+	return conn.Stream.Close()
 }
